@@ -278,24 +278,6 @@ Just open `data/wiki/` as a vault in Obsidian.
 
 ---
 
-## Roadmap
-
-- [x] **Phase 0** — Project skeleton
-- [x] **Phase 1** — MVP (ingest, compile, wiki, search, Q&A, mind map, settings)
-- [x] **Phase 2** — Full app (all ingest sources, linting, dashboard, translate, dark/light mode, CLI, Docker, health checks)
-
----
-
-## Inspired By
-
-This project is inspired by [Andrej Karpathy's workflow](https://x.com/karpathy) of using LLMs to build personal knowledge bases — compiling raw sources into interconnected wikis, querying them, and letting every interaction enrich the knowledge base over time.
-
-> *"Raw data from a given number of sources is collected, then compiled by an LLM into a .md wiki, then operated on by various CLIs by the LLM to do Q&A and to incrementally enhance the wiki. I think there is room here for an incredible new product instead of a hacky collection of scripts."*
-
-MindNest is that product.
-
----
-
 ## License
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
