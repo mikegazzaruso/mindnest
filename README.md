@@ -2,7 +2,7 @@
 
 **LLM-powered personal knowledge base.** Raw sources go in, a structured Markdown wiki comes out — compiled, linked, and maintained entirely by AI.
 
-![MindNest](https://img.shields.io/badge/status-Full_App-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue) ![License](https://img.shields.io/badge/license-MIT-green)
+![MindNest](https://img.shields.io/badge/status-Full_App-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue) ![License](https://img.shields.io/badge/license-GPL--3.0-blue)
 
 ---
 
@@ -298,4 +298,4 @@ MindNest is that product.
 
 ## License
 
-MIT
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
