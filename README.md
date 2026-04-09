@@ -137,7 +137,7 @@ URLs are fetched and converted to Markdown (Readability + Turndown). PDFs are te
 
 The LLM processes **only new/changed sources** (incremental). For each new source:
 1. Generates a summary article
-2. Extracts concepts from **only the new summary** (not all 200)
+2. Extracts concepts from **only the new summary**
 3. Writes articles for **new concepts only**, passing existing concept names for cross-linking
 4. Embeds each article into the local vector index
 5. Regenerates the master index and concept map
