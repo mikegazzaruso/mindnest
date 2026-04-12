@@ -1,6 +1,11 @@
 import { createProvider } from "@mindnest/core";
 import type { LLMProviderInterface } from "@mindnest/core";
 import { loadSettings } from "./settings";
+import { ensureNativeLoadersRegistered } from "./native-loader";
+
+// Register native loaders as a side effect of importing llm.ts.
+// Every API route imports getLLM(), so this runs once at server startup.
+ensureNativeLoadersRegistered();
 
 let cachedProvider: LLMProviderInterface | null = null;
 let cachedConfig: string = "";

@@ -18,3 +18,10 @@ export { createProvider } from "./llm";
 export { PROMPTS } from "./llm";
 
 export { VectorStore } from "./vectorstore";
+
+// Runtime loaders that must be registered by the consumer app.
+// The app uses createRequire + /* turbopackIgnore */ to load these packages
+// without Turbopack touching them (Turbopack's bundled externals break on
+// ESM↔CJS interop for onnxruntime-common and pdfjs-dist).
+export { registerTransformersLoader } from "./vectorstore/embedder";
+export { registerPdfParseLoader } from "./ingest/pdf";

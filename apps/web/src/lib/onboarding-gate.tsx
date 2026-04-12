@@ -1,0 +1,51 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { OnboardingFlow } from "@/components/onboarding";
+
+type GateState = "loading" | "needed" | "done";
+
+export function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const [state, setState] = useState<GateState>("loading");
+
+  useEffect(() => {
+    checkOnboarding();
+  }, []);
+
+  async function checkOnboarding() {
+    // Only Electron triggers the onboarding flow
+    if (typeof window === "undefined" || !window.mindnest) {
+      setState("done");
+      return;
+    }
+    try {
+      const [bootstrap, settingsRes] = await Promise.all([
+        window.mindnest.getBootstrap(),
+        fetch("/api/settings").then((r) => r.json()),
+      ]);
+      const hasNestBrain = !!bootstrap?.nestBrainPath;
+      const completed = settingsRes?.onboardingCompleted === true;
+      setState(hasNestBrain && completed ? "done" : "needed");
+    } catch {
+      // If anything fails, show the onboarding to be safe
+      setState("needed");
+    }
+  }
+
+  if (state === "loading") {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-background z-[100]">
+        <div className="w-8 h-8 border-2 border-accent/30 border-t-accent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {children}
+      {state === "needed" && (
+        <OnboardingFlow onFinish={() => setState("done")} />
+      )}
+    </>
+  );
+}

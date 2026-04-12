@@ -9,6 +9,7 @@ export function CompileIndicator() {
   return (
     <div className="px-4 py-3 border-b border-sidebar-border">
       <button
+        data-onboard="compile-button"
         onClick={() => compile()}
         disabled={status === "compiling"}
         className="w-full flex items-center gap-2.5 group disabled:cursor-wait"

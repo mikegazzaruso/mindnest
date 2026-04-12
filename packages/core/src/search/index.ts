@@ -10,35 +10,56 @@ export interface SearchOptions {
   wikiPath?: string;
 }
 
+// Hybrid search weights
+const SEMANTIC_WEIGHT = 0.7;
+const KEYWORD_WEIGHT = 0.3;
+
+function normalizeScores(
+  results: SearchResult[],
+): Map<string, { result: SearchResult; normalized: number }> {
+  const out = new Map<string, { result: SearchResult; normalized: number }>();
+  if (results.length === 0) return out;
+  const maxScore = Math.max(...results.map((r) => r.score));
+  if (maxScore <= 0) return out;
+  for (const r of results) {
+    out.set(r.articleId, { result: r, normalized: r.score / maxScore });
+  }
+  return out;
+}
+
 export async function search(options: SearchOptions): Promise<SearchResult[]> {
   const wikiPath = resolve(options.wikiPath ?? "./data/wiki");
   const limit = options.limit ?? 10;
 
-  // Run both searches in parallel
-  const [semanticResults, keywordResults] = await Promise.all([
-    semanticSearch(options.query, wikiPath, limit),
-    keywordSearch(options.query, wikiPath, limit),
+  // Fetch a wider candidate set so the final ranking can pick from more sources
+  const candidateLimit = Math.max(limit * 3, 20);
+
+  const [semanticResultsRaw, keywordResultsRaw] = await Promise.all([
+    semanticSearch(options.query, wikiPath, candidateLimit),
+    keywordSearch(options.query, wikiPath, candidateLimit),
   ]);
 
-  // Merge: deduplicate by articleId, combine scores
-  const merged = new Map<string, SearchResult>();
+  // Normalize each score set to [0, 1] so the two channels are comparable.
+  // Without normalization, keyword scores (raw count-based, can reach 10+)
+  // dominate semantic cosine scores (bounded at 1.0), effectively making the
+  // final ranking keyword-only.
+  const semanticN = normalizeScores(semanticResultsRaw);
+  const keywordN = normalizeScores(keywordResultsRaw);
 
-  for (const r of semanticResults) {
-    merged.set(r.articleId, { ...r, score: r.score * 2 }); // semantic gets 2x weight
+  const ids = new Set<string>([...semanticN.keys(), ...keywordN.keys()]);
+  const merged: SearchResult[] = [];
+  for (const id of ids) {
+    const s = semanticN.get(id);
+    const k = keywordN.get(id);
+    const result = s?.result ?? k!.result;
+    const combined =
+      (s?.normalized ?? 0) * SEMANTIC_WEIGHT +
+      (k?.normalized ?? 0) * KEYWORD_WEIGHT;
+    merged.push({ ...result, score: combined });
   }
 
-  for (const r of keywordResults) {
-    const existing = merged.get(r.articleId);
-    if (existing) {
-      existing.score += r.score * 0.5; // boost if both match
-    } else {
-      merged.set(r.articleId, { ...r, score: r.score * 0.5 });
-    }
-  }
-
-  const results = [...merged.values()];
-  results.sort((a, b) => b.score - a.score);
-  return results.slice(0, limit);
+  merged.sort((a, b) => b.score - a.score);
+  return merged.slice(0, limit);
 }
 
 async function semanticSearch(query: string, wikiPath: string, limit: number): Promise<SearchResult[]> {
