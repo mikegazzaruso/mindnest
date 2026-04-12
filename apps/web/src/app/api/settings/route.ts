@@ -37,6 +37,10 @@ export async function PUT(request: NextRequest) {
             : current.llm.openaiApiKey,
       },
       autoCompile: body.autoCompile ?? current.autoCompile ?? false,
+      onboardingCompleted:
+        typeof body.onboardingCompleted === "boolean"
+          ? body.onboardingCompleted
+          : (current.onboardingCompleted ?? false),
     };
 
     await saveSettings(updated);

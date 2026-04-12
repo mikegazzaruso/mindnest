@@ -11,6 +11,8 @@
   "dependencies": {
     "@mindnest/core": "workspace:*",
     "@mindnest/shared": "workspace:*",
+    "@xterm/addon-fit": "^0.10.0",
+    "@xterm/xterm": "^5.5.0",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.511.0",
     "mermaid": "^11.14.0",

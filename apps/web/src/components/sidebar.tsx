@@ -15,7 +15,10 @@ import {
   Moon,
 } from "lucide-react";
 import { CompileIndicator } from "./compile-indicator";
+import { FileTree } from "./file-tree";
+import { NewProjectModal } from "./new-project-modal";
 import { useTheme } from "@/lib/theme-context";
+import { useTerminal } from "@/lib/terminal-context";
 
 const navItems = [
   { href: "/wiki", icon: BookOpen, label: "Wiki" },
@@ -36,12 +39,40 @@ export function Sidebar() {
   const pathname = usePathname();
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const isDragging = useRef(false);
+  const [nestBrainPath, setNestBrainPath] = useState<string | null>(null);
+  const [newProjectOpen, setNewProjectOpen] = useState(false);
+  const { openTerminal } = useTerminal();
 
   // Load saved width
   useEffect(() => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) setWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, parseInt(saved))));
   }, []);
+
+  // Load NestBrain path (Electron only)
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.mindnest) return;
+    window.mindnest
+      .getBootstrap()
+      .then((b) => {
+        if (b.nestBrainPath) setNestBrainPath(b.nestBrainPath);
+      })
+      .catch(() => { /* ignore */ });
+  }, []);
+
+  const handleCreateProject = useCallback(
+    async (projectName: string) => {
+      if (!nestBrainPath || typeof window === "undefined" || !window.mindnest) {
+        throw new Error("NestBrain path not available");
+      }
+      const projectPath = `${nestBrainPath}/Projects/${projectName}`;
+      await window.mindnest.fs.createDir(projectPath);
+      await openTerminal(projectPath, projectName);
+      // Trigger file tree refresh via focus event
+      window.dispatchEvent(new Event("focus"));
+    },
+    [nestBrainPath, openTerminal],
+  );
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -78,9 +109,9 @@ export function Sidebar() {
 
   return (
     <div className="relative shrink-0 flex" style={{ width }}>
-      <aside className="w-full h-screen sticky top-0 border-r border-sidebar-border bg-sidebar flex flex-col overflow-hidden">
+      <aside className="w-full h-full border-r border-sidebar-border bg-sidebar flex flex-col overflow-hidden">
         {/* Logo */}
-        <Link href="/" className="block px-5 py-4 border-b border-sidebar-border">
+        <Link href="/" className="sidebar-header block px-5 py-4 border-b border-sidebar-border">
           <div className="flex items-baseline gap-2">
             <h1 className="text-lg font-semibold tracking-tight">
               <span className="text-accent">Mind</span>Nest
@@ -90,7 +121,15 @@ export function Sidebar() {
           <p className="text-[11px] text-muted/60 mt-0.5">v0.9.1</p>
         </Link>
 
-        {/* Compile indicator — right under logo */}
+        {/* NestBrain file tree (Electron only, after onboarding) */}
+        {nestBrainPath && (
+          <FileTree
+            rootPath={nestBrainPath}
+            onNewProject={() => setNewProjectOpen(true)}
+          />
+        )}
+
+        {/* Compile indicator */}
         <CompileIndicator />
 
         {/* Navigation */}
@@ -127,6 +166,12 @@ export function Sidebar() {
       <div
         onMouseDown={handleMouseDown}
         className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize z-50 hover:bg-accent/20 active:bg-accent/30 transition-colors"
+      />
+
+      <NewProjectModal
+        isOpen={newProjectOpen}
+        onClose={() => setNewProjectOpen(false)}
+        onCreate={handleCreateProject}
       />
     </div>
   );

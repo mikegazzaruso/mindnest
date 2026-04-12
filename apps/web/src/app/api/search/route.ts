@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { search } from "@mindnest/core";
 import { getDataPaths } from "@/lib/config";
+import { ensureNativeLoadersRegistered } from "@/lib/native-loader";
+
+ensureNativeLoadersRegistered();
 
 export async function GET(request: NextRequest) {
   try {

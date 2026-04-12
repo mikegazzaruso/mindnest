@@ -198,6 +198,7 @@ export default function IngestPage() {
                 className="absolute left-4 top-1/2 -translate-y-1/2 text-muted"
               />
               <input
+                data-onboard="ingest-input"
                 type="text"
                 value={source}
                 onChange={(e) => setSource(e.target.value)}
@@ -330,7 +331,7 @@ export default function IngestPage() {
       {/* Duplicate source dialog */}
       {duplicatePrompt && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 max-w-sm mx-4 animate-toast-in">
+          <div className="bg-card border border-border rounded-2xl shadow-2xl p-6 max-w-sm mx-4 animate-pop-in">
             <div className="flex items-center gap-3 mb-3">
               <AlertCircle size={20} className="text-amber-400 shrink-0" />
               <h3 className="text-sm font-semibold text-foreground">

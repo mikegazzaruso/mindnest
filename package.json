@@ -8,12 +8,24 @@
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "turbo test",
+    "desktop:dev": "pnpm --filter @mindnest/desktop dev",
+    "desktop:build": "pnpm --filter @mindnest/web build && pnpm desktop:copy-assets && pnpm desktop:prepare-standalone && pnpm --filter @mindnest/desktop build",
+    "desktop:copy-assets": "rm -rf apps/web/.next/standalone/apps/web/.next/static apps/web/.next/standalone/apps/web/public && cp -R apps/web/.next/static apps/web/.next/standalone/apps/web/.next/static && cp -R apps/web/public apps/web/.next/standalone/apps/web/public",
+    "desktop:prepare-standalone": "node apps/desktop/build/prepare-standalone.mjs",
+    "desktop:package": "pnpm desktop:build && pnpm --filter @mindnest/desktop package",
+    "desktop:package:mac": "pnpm desktop:build && pnpm --filter @mindnest/desktop package:mac",
+    "desktop:package:win": "pnpm desktop:build && pnpm --filter @mindnest/desktop package:win",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yaml}\""
   },
   "packageManager": "pnpm@10.33.0",
   "engines": {
     "node": ">=20.0.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "onnxruntime-common": "1.24.3"
+    }
   },
   "devDependencies": {
     "@types/node": "^20.19.39",

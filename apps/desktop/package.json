@@ -1,0 +1,86 @@
+{
+  "name": "@mindnest/desktop",
+  "version": "0.9.1",
+  "private": true,
+  "description": "MindNest native desktop app",
+  "main": "dist/main.js",
+  "scripts": {
+    "build:ts": "tsc -p tsconfig.json",
+    "build": "pnpm build:ts",
+    "dev": "pnpm build:ts && MINDNEST_DEV=1 electron .",
+    "start": "electron .",
+    "package": "electron-builder",
+    "package:mac": "electron-builder --mac",
+    "package:win": "electron-builder --win"
+  },
+  "dependencies": {
+    "node-pty": "^1.0.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.1",
+    "@types/node": "^20.19.39",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "sharp": "^0.34.5",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "com.nextepochs.mindnest",
+    "productName": "MindNest",
+    "copyright": "Copyright © 2026 NextEpochs",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json",
+      "node_modules/node-pty/**/*"
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "../../apps/web/.next/standalone",
+        "to": "web"
+      },
+      {
+        "from": "../../apps/web/.next/static",
+        "to": "web/apps/web/.next/static"
+      },
+      {
+        "from": "../../apps/web/public",
+        "to": "web/apps/web/public"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "linux": {
+      "icon": "build/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

@@ -1,5 +1,5 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join, dirname } from "node:path";
+import { join, dirname, resolve } from "node:path";
 
 export interface AppSettings {
   llm: {
@@ -9,6 +9,7 @@ export interface AppSettings {
     claudeModel: string;
   };
   autoCompile?: boolean;
+  onboardingCompleted?: boolean;
 }
 
 const DEFAULT_SETTINGS: AppSettings = {
@@ -19,21 +20,34 @@ const DEFAULT_SETTINGS: AppSettings = {
     claudeModel: "sonnet",
   },
   autoCompile: false,
+  onboardingCompleted: false,
 };
 
-const SETTINGS_PATH = join(process.cwd(), "../../data/settings.json");
+function getSettingsPath(): string {
+  const base = process.env.MINDNEST_DATA_DIR
+    ? resolve(process.env.MINDNEST_DATA_DIR)
+    : resolve(process.cwd(), "../../data");
+  return join(base, "settings.json");
+}
 
 export async function loadSettings(): Promise<AppSettings> {
   try {
-    const raw = await readFile(SETTINGS_PATH, "utf-8");
+    const raw = await readFile(getSettingsPath(), "utf-8");
     const saved = JSON.parse(raw);
-    return { ...DEFAULT_SETTINGS, ...saved, llm: { ...DEFAULT_SETTINGS.llm, ...saved.llm }, autoCompile: saved.autoCompile ?? DEFAULT_SETTINGS.autoCompile };
+    return {
+      ...DEFAULT_SETTINGS,
+      ...saved,
+      llm: { ...DEFAULT_SETTINGS.llm, ...saved.llm },
+      autoCompile: saved.autoCompile ?? DEFAULT_SETTINGS.autoCompile,
+      onboardingCompleted: saved.onboardingCompleted ?? DEFAULT_SETTINGS.onboardingCompleted,
+    };
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
 }
 
 export async function saveSettings(settings: AppSettings): Promise<void> {
-  await mkdir(dirname(SETTINGS_PATH), { recursive: true });
-  await writeFile(SETTINGS_PATH, JSON.stringify(settings, null, 2), "utf-8");
+  const path = getSettingsPath();
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, JSON.stringify(settings, null, 2), "utf-8");
 }
