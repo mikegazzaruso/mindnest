@@ -49,15 +49,22 @@ export function Sidebar() {
     if (saved) setWidth(Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, parseInt(saved))));
   }, []);
 
-  // Load NestBrain path (Electron only)
+  // Load NestBrain path (Electron only). Subscribes to onNestBrainMoved
+  // so the file tree appears as soon as onboarding completes (and updates
+  // when the user moves the workspace from Settings).
   useEffect(() => {
     if (typeof window === "undefined" || !window.nestbrain) return;
-    window.nestbrain
-      .getBootstrap()
-      .then((b) => {
-        if (b.nestBrainPath) setNestBrainPath(b.nestBrainPath);
-      })
-      .catch(() => { /* ignore */ });
+    function refetch() {
+      window.nestbrain!
+        .getBootstrap()
+        .then((b) => {
+          if (b.nestBrainPath) setNestBrainPath(b.nestBrainPath);
+        })
+        .catch(() => { /* ignore */ });
+    }
+    refetch();
+    const off = window.nestbrain.onNestBrainMoved?.(() => refetch());
+    return off;
   }, []);
 
   const handleCreateProject = useCallback(
@@ -114,11 +121,11 @@ export function Sidebar() {
         <Link href="/" className="sidebar-header block px-5 py-4 border-b border-sidebar-border">
           <div className="flex items-baseline gap-2">
             <h1 className="text-lg font-semibold tracking-tight">
-              <span className="text-accent">Mind</span>Nest
+              <span className="text-accent">Nest</span>Brain
             </h1>
             <span className="text-[10px] text-muted/40 italic">by NextEpochs</span>
           </div>
-          <p className="text-[11px] text-muted/60 mt-0.5">v0.9.1</p>
+          <p className="text-[11px] text-muted/60 mt-0.5">v0.10.0</p>
         </Link>
 
         {/* NestBrain file tree (Electron only, after onboarding) */}

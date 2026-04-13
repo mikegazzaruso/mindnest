@@ -24,6 +24,15 @@ import {
   type FSWatcher,
 } from "node:fs";
 import * as pty from "node-pty";
+import fixPath from "fix-path";
+
+// On macOS, packaged Electron apps don't inherit the user's shell PATH —
+// they get a minimal PATH like /usr/bin:/bin which doesn't include common
+// install locations (~/.npm-global/bin, /opt/homebrew/bin, etc.). This
+// breaks spawning external CLIs like `claude` (the Anthropic Claude CLI)
+// from the LLM provider. fix-path runs the user's default shell once and
+// grabs the real PATH so child processes can find these binaries.
+fixPath();
 
 const isDev = !!process.env.NESTBRAIN_DEV;
 const DEV_URL = "http://localhost:3000";
@@ -801,6 +810,16 @@ ipcMain.handle("nestbrain:setupNestBrain", async (_e, parentPath: string) => {
   await restartNextServer();
   // Start watching the freshly created NestBrain for file tree auto-refresh
   startNestBrainWatcher(nestBrainPath);
+
+  // Notify the renderer so the sidebar / file tree pick up the new
+  // workspace path immediately at the end of onboarding (without needing
+  // an app restart). Reuses the same channel as the move handler.
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("nestbrain:nestBrainMoved", {
+      nestBrainPath,
+    });
+  }
+
   return { nestBrainPath };
 });
 
