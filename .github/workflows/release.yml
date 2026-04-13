@@ -183,11 +183,11 @@ jobs:
               print(f"  file_id={file_id}")
 
               # 2. PUT to presigned S3 URL via curl (handles large files + SSL reliably)
+              # Do NOT add Content-Type or Content-Length — presigned URL signs only 'host',
+              # any extra headers break the signature and cause 400.
               result = subprocess.run([
                   "curl", "--fail", "--silent", "--show-error",
                   "--request", "PUT",
-                  "--header", f"Content-Type: {mime}",
-                  "--header", f"Content-Length: {size}",
                   "--upload-file", path,
                   "--dump-header", "-",
                   "--max-time", "600",
