@@ -186,15 +186,22 @@ jobs:
               s3_headers = part.get("headers", {})
               print(f"  file_id={file_id}, extra headers: {list(s3_headers.keys())}")
 
-              # 2. PUT to presigned S3 URL via curl
-              # --http1.1  : S3 presigned URLs require HTTP/1.1 (HTTP/2 → 400)
-              # --fail-with-body: exit non-zero AND show S3 error XML on failure
-              # --upload-file: streams the file without loading into memory
+              # 2a. Compute SHA256 — Polar S3 bucket requires x-amz-checksum-sha256
+              import hashlib, base64
+              sha256 = hashlib.sha256()
+              with open(path, "rb") as f:
+                  for chunk in iter(lambda: f.read(8 * 1024 * 1024), b""):
+                      sha256.update(chunk)
+              checksum_b64 = base64.b64encode(sha256.digest()).decode()
+              print(f"  SHA256={checksum_b64[:20]}…")
+
+              # 2b. PUT to presigned S3 URL via curl (HTTP/1.1 required for presigned URLs)
               result = subprocess.run([
                   "curl", "--http1.1",
                   "--fail-with-body", "--silent", "--show-error",
                   "--upload-file", path,
                   "--header", "Expect:",
+                  "--header", f"x-amz-checksum-sha256: {checksum_b64}",
                   "--dump-header", "-",
                   "--max-time", "600",
                   "--retry", "3",
@@ -205,7 +212,7 @@ jobs:
               if result.returncode != 0:
                   print("  S3 upload failed")
                   print("  stderr:", result.stderr[:300])
-                  print("  stdout:", result.stdout[:500])
+                  print("  stdout:", result.stdout[:800])
                   sys.exit(1)
 
               # Extract ETag from curl response headers
@@ -216,9 +223,10 @@ jobs:
                       break
               print(f"  S3 OK, ETag={etag}")
 
-              # 3. Confirm upload
+              # 3. Confirm upload (pass checksum so Polar can verify integrity)
               r2 = requests.patch(f"{base}/v1/files/{file_id}/uploaded", headers=headers,
-                  json={"parts": [{"number": 1, "checksum_etag": etag}]}, timeout=30)
+                  json={"parts": [{"number": 1, "checksum_etag": etag,
+                                   "checksum_sha256_base64": checksum_b64}]}, timeout=30)
               if not r2.ok:
                   print("  confirm failed:", r2.status_code, r2.text); sys.exit(1)
               print("  confirmed")
