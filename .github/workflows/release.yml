@@ -179,22 +179,28 @@ jobs:
                   print("  initiate upload failed:", r.status_code, r.text); sys.exit(1)
               data    = r.json()
               file_id = data["id"]
-              s3_url  = data["upload"]["parts"][0]["url"]
-              print(f"  file_id={file_id}")
+              part    = data["upload"]["parts"][0]
+              s3_url  = part["url"]
+              # Polar returns required headers (e.g. x-amz-server-side-encryption)
+              # that MUST be sent with the PUT — they are part of the S3 signature.
+              s3_headers = part.get("headers", {})
+              print(f"  file_id={file_id}, extra headers: {list(s3_headers.keys())}")
 
               # 2. PUT to presigned S3 URL via curl (handles large files + SSL reliably)
-              # Do NOT add Content-Type or Content-Length — presigned URL signs only 'host',
-              # any extra headers break the signature and cause 400.
+              header_args = []
+              for k, v in s3_headers.items():
+                  header_args += ["--header", f"{k}: {v}"]
+
               result = subprocess.run([
                   "curl", "--fail", "--silent", "--show-error",
                   "--request", "PUT",
+                  "--header", "Expect:",      # suppress 100-continue, S3 dislikes it
                   "--upload-file", path,
                   "--dump-header", "-",
                   "--max-time", "600",
                   "--retry", "3",
                   "--retry-delay", "5",
-                  s3_url,
-              ], capture_output=True, text=True)
+              ] + header_args + [s3_url], capture_output=True, text=True)
 
               if result.returncode != 0:
                   print("  S3 upload failed:", result.stderr); sys.exit(1)
