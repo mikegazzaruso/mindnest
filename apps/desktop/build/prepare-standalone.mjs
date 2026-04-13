@@ -26,13 +26,10 @@ import {
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-// When set (by the packaging scripts), replace the symlink strategy with
-// real file copies that dereference all symlinks. Symlinks work great for
-// dev iteration but break during electron-builder's code-signing pass: it
-// walks into symlinks pointing back to the repo's pnpm store, which is
-// outside the .app bundle, and either follows them out-of-bundle or hits
-// dangling entries (e.g. .pnpm/node_modules/semver ENOENT).
-const COPY_MODE = process.env.MINDNEST_STANDALONE_COPY === "1";
+// We always do real file copies (not symlinks) so the prepared standalone
+// is self-contained and safe both for dev iteration AND for electron-builder
+// packaging. Surgical sync only adds the few native files NFT missed
+// (.node/.dylib/.so/.wasm/.dll), so the cost is negligible and idempotent.
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(__dirname, "../../..");
@@ -116,16 +113,12 @@ function makeSymlink(linkPath, target) {
   symlinkSync(target, linkPath, "dir");
 }
 
-function makeLinkOrCopy(linkPath, target) {
+function recursiveCopy(linkPath, target) {
   mkdirSync(dirname(linkPath), { recursive: true });
   forceRemove(linkPath);
-  if (COPY_MODE) {
-    // Recursive copy, dereferencing any nested symlinks so the result is
-    // self-contained and safe to put inside a packaged .app bundle.
-    cpSync(target, linkPath, { recursive: true, dereference: true });
-  } else {
-    symlinkSync(target, linkPath, "dir");
-  }
+  // Recursive copy, dereferencing nested symlinks so the result is
+  // self-contained and safe to put inside a packaged .app bundle.
+  cpSync(target, linkPath, { recursive: true, dereference: true });
 }
 
 // Surgical native-file sync: copy only the NATIVE binary files (.node,
@@ -161,13 +154,10 @@ function syncNativeFiles(realDir, standaloneDir) {
   return synced;
 }
 
-// === Step 1: hydrate native files into NFT-copied partial packages ===
-// Dev mode (symlinks): replace wholesale, fast, bytes reused.
-// Copy mode (packaging): SURGICAL — only copy native files NFT missed,
-//   leaving relative sibling symlinks intact. This avoids duplicating
-//   entire transitive dep dirs (pdfjs-dist used to end up 3x in the
-//   packaged .app).
-let replaced = 0;
+// === Step 1: SURGICAL native-file hydration ===
+// For each native package, copy ONLY the missing native files (.node,
+// .dylib, .so, .wasm, .dll) into the NFT-traced partial dir. Leaves all
+// relative sibling symlinks intact, so transitive deps aren't duplicated.
 let surgicalFiles = 0;
 for (const { storeDir, pkgName } of NATIVE_PACKAGES_TO_REPLACE) {
   const standalonePkgPath = join(STANDALONE_STORE, storeDir, "node_modules", pkgName);
@@ -176,16 +166,10 @@ for (const { storeDir, pkgName } of NATIVE_PACKAGES_TO_REPLACE) {
     console.warn(`[warn] real package missing: ${realPkgPath}`);
     continue;
   }
-  if (COPY_MODE) {
-    const added = syncNativeFiles(realPkgPath, standalonePkgPath);
-    if (added > 0) {
-      console.log(`+ hydrated ${added} native file(s) in .pnpm/${storeDir}/node_modules/${pkgName}`);
-      surgicalFiles += added;
-    }
-  } else {
-    makeLinkOrCopy(standalonePkgPath, realPkgPath);
-    console.log(`✓ replaced .pnpm/${storeDir}/node_modules/${pkgName}`);
-    replaced++;
+  const added = syncNativeFiles(realPkgPath, standalonePkgPath);
+  if (added > 0) {
+    console.log(`+ hydrated ${added} native file(s) in .pnpm/${storeDir}/node_modules/${pkgName}`);
+    surgicalFiles += added;
   }
 }
 
@@ -221,7 +205,7 @@ for (const pkg of TOP_LEVEL_PACKAGES) {
   const root = packageRoot(pkg);
   if (!root) continue;
   const linkPath = join(STANDALONE_ROOT, pkg);
-  makeLinkOrCopy(linkPath, root);
+  recursiveCopy(linkPath, root);
   console.log(`✓ node_modules/${pkg} → ${root}`);
 }
 
@@ -287,5 +271,5 @@ if (danglingRemoved > 0) {
 }
 
 console.log(
-  `\nStandalone modules prepared: ${replaced} native packages ${COPY_MODE ? "copied" : "replaced (symlinks)"}, ${danglingRemoved} dangling scrubbed, top-level entries in place.`,
+  `\nStandalone modules prepared: ${surgicalFiles} native files hydrated, ${danglingRemoved} dangling scrubbed, top-level entries in place.`,
 );
