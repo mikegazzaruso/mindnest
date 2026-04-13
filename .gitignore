@@ -46,8 +46,5 @@ coverage/
 
 # Internal docs
 ANTHROPIC.md
-CLAUDE.md
 DESIDERATA.md
 DEVELOPMENT_CONTRACT.md
-# Skeleton CLAUDE.md is a template, not a project doc — keep it tracked
-!skeleton/CLAUDE.md
