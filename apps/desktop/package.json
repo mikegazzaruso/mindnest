@@ -48,14 +48,6 @@
         "to": "web"
       },
       {
-        "from": "../../apps/web/.next/static",
-        "to": "web/apps/web/.next/static"
-      },
-      {
-        "from": "../../apps/web/public",
-        "to": "web/apps/web/public"
-      },
-      {
         "from": "../../skeleton",
         "to": "skeleton"
       }
