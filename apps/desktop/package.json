@@ -14,7 +14,6 @@
     "package:win": "electron-builder --win"
   },
   "dependencies": {
-    "fix-path": "^5.0.0",
     "node-pty": "^1.0.0"
   },
   "devDependencies": {

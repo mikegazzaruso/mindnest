@@ -24,15 +24,47 @@ import {
   type FSWatcher,
 } from "node:fs";
 import * as pty from "node-pty";
-import fixPath from "fix-path";
+import { execSync } from "node:child_process";
 
 // On macOS, packaged Electron apps don't inherit the user's shell PATH —
 // they get a minimal PATH like /usr/bin:/bin which doesn't include common
 // install locations (~/.npm-global/bin, /opt/homebrew/bin, etc.). This
 // breaks spawning external CLIs like `claude` (the Anthropic Claude CLI)
-// from the LLM provider. fix-path runs the user's default shell once and
-// grabs the real PATH so child processes can find these binaries.
-fixPath();
+// from the LLM provider.
+//
+// Inline replacement for the `fix-path` package (which is ESM-only in v4
+// and can't be `require()`'d from our CJS main bundle): spawn the user's
+// default shell as an interactive login shell, ask it for PATH, then
+// override the current process env. Falls back to a list of common bin
+// dirs if shell invocation fails.
+function fixMacPath(): void {
+  if (process.platform !== "darwin") return;
+  try {
+    const shell = process.env.SHELL || "/bin/zsh";
+    const out = execSync(`"${shell}" -ilc 'echo "$PATH"'`, {
+      encoding: "utf8",
+      timeout: 3000,
+    }).trim();
+    if (out && out.length > 0) {
+      process.env.PATH = out;
+      return;
+    }
+  } catch {
+    /* fall through to default extension */
+  }
+  const home = process.env.HOME || "";
+  const extra = [
+    "/usr/local/bin",
+    "/opt/homebrew/bin",
+    "/opt/homebrew/sbin",
+    `${home}/.npm-global/bin`,
+    `${home}/.local/bin`,
+    `${home}/.cargo/bin`,
+    "/usr/local/sbin",
+  ];
+  process.env.PATH = `${extra.join(":")}:${process.env.PATH || ""}`;
+}
+fixMacPath();
 
 const isDev = !!process.env.NESTBRAIN_DEV;
 const DEV_URL = "http://localhost:3000";
