@@ -118,13 +118,11 @@ jobs:
           retention-days: 7
 
   release:
-    name: Publish GitHub Release
+    name: Publish to private releases repo
     needs: [build-mac, build-win]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Checkout
+      - name: Checkout (source repo, just for package.json)
         uses: actions/checkout@v4
 
       - name: Read version from package.json
@@ -140,12 +138,22 @@ jobs:
       - name: List artifacts
         run: ls -lh dist/
 
-      - name: Create / update GitHub Release
+      # Publish the signed binaries to the PRIVATE distribution repo
+      # `mikegazzaruso/mindnest-releases`. Buyers gain repo access via Polar,
+      # giving them read access to releases. The source remains public on
+      # `mikegazzaruso/mindnest`; only the official notarized builds are
+      # behind the paywall here.
+      - name: Create / update Release on private repo
         uses: softprops/action-gh-release@v2
         with:
+          repository: mikegazzaruso/mindnest-releases
+          token: ${{ secrets.RELEASES_TOKEN }}
           tag_name: v${{ steps.version.outputs.version }}
           name: MindNest v${{ steps.version.outputs.version }}
-          generate_release_notes: true
+          body: |
+            Official signed and notarized MindNest builds for paying supporters.
+            Source code and self-build instructions remain free at
+            https://github.com/mikegazzaruso/mindnest
           fail_on_unmatched_files: true
           files: |
             dist/*.dmg
