@@ -134,10 +134,13 @@ jobs:
       - name: List artifacts
         run: ls -lh dist/
 
+      - name: Install curl (already present on ubuntu-latest, just explicit)
+        run: curl --version
+
       - name: Upload files to Polar
         run: |
           python3 << 'PYEOF'
-          import os, sys, requests, json, hashlib
+          import os, sys, subprocess, requests, json
 
           token      = os.environ["POLAR_TOKEN"]
           product_id = os.environ["POLAR_PRODUCT_ID"]
@@ -171,7 +174,7 @@ jobs:
                   "upload": {
                       "parts": [{"number": 1, "chunk_start": 0, "chunk_end": size - 1}]
                   }
-              })
+              }, timeout=30)
               if not r.ok:
                   print("  initiate upload failed:", r.status_code, r.text); sys.exit(1)
               data    = r.json()
@@ -179,25 +182,42 @@ jobs:
               s3_url  = data["upload"]["parts"][0]["url"]
               print(f"  file_id={file_id}")
 
-              # 2. PUT to presigned S3 URL
-              with open(path, "rb") as f:
-                  s3 = requests.put(s3_url, data=f, headers={"Content-Type": mime})
-              if not s3.ok:
-                  print("  S3 upload failed:", s3.status_code); sys.exit(1)
-              etag = s3.headers.get("ETag", "").strip('"')
+              # 2. PUT to presigned S3 URL via curl (handles large files + SSL reliably)
+              result = subprocess.run([
+                  "curl", "--fail", "--silent", "--show-error",
+                  "--request", "PUT",
+                  "--header", f"Content-Type: {mime}",
+                  "--header", f"Content-Length: {size}",
+                  "--upload-file", path,
+                  "--dump-header", "-",
+                  "--max-time", "600",
+                  "--retry", "3",
+                  "--retry-delay", "5",
+                  s3_url,
+              ], capture_output=True, text=True)
+
+              if result.returncode != 0:
+                  print("  S3 upload failed:", result.stderr); sys.exit(1)
+
+              # Extract ETag from curl response headers
+              etag = ""
+              for line in result.stdout.splitlines():
+                  if line.lower().startswith("etag:"):
+                      etag = line.split(":", 1)[1].strip().strip('"')
+                      break
               print(f"  S3 OK, ETag={etag}")
 
               # 3. Confirm upload
               r2 = requests.patch(f"{base}/v1/files/{file_id}/uploaded", headers=headers,
-                  json={"parts": [{"number": 1, "checksum_etag": etag}]})
+                  json={"parts": [{"number": 1, "checksum_etag": etag}]}, timeout=30)
               if not r2.ok:
                   print("  confirm failed:", r2.status_code, r2.text); sys.exit(1)
               print("  confirmed")
 
               # 4. Attach to product
-              r3 = requests.post(f"{base}/v1/products/{product_id}/files/{file_id}", headers=headers)
+              r3 = requests.post(f"{base}/v1/products/{product_id}/files/{file_id}",
+                  headers=headers, timeout=30)
               if not r3.ok:
-                  # 409 = already attached — not an error
                   if r3.status_code == 409:
                       print("  already attached (409 — OK)")
                   else:
