@@ -193,13 +193,15 @@ jobs:
               }, timeout=30)
               if not r.ok:
                   print("  initiate upload failed:", r.status_code, r.text); sys.exit(1)
-              data      = r.json()
-              file_id   = data["id"]
-              file_path = data.get("path") or data.get("name") or filename
-              part      = data["upload"]["parts"][0]
-              s3_url    = part["url"]
+              data       = r.json()
+              file_id    = data["id"]                  # polar file id — used in URL
+              upload_id  = data["upload"]["id"]        # S3 multipart UploadId — used in body
+              file_path  = data["upload"].get("path") or data.get("path") or filename
+              part       = data["upload"]["parts"][0]
+              s3_url     = part["url"]
               s3_headers = part.get("headers", {})
-              print(f"  file_id={file_id} path={file_path}")
+              print(f"  file_id={file_id} upload_id={upload_id}")
+              print(f"  path={file_path}")
               print(f"  signed headers: {list(s3_headers.keys())}")
 
               # 2. PUT to presigned S3 URL via curl
@@ -232,9 +234,10 @@ jobs:
                       break
               print(f"  S3 OK, ETag={etag}")
 
-              # 3. Confirm upload
+              # 3. Confirm upload — body 'id' MUST be the S3 multipart UploadId,
+              # NOT the polar file id (Polar uses it directly as boto3 UploadId).
               confirm_body = {
-                  "id": file_id,
+                  "id": upload_id,
                   "path": file_path,
                   "parts": [{
                       "number": 1,
