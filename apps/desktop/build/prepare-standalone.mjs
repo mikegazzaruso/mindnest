@@ -201,13 +201,102 @@ function packageRoot(pkg) {
   return null;
 }
 
+// Track which packages we've already copied to top-level (dedup)
+const placedAtTopLevel = new Set();
+
+function copyToTopLevel(pkgName, src) {
+  if (placedAtTopLevel.has(pkgName)) return false;
+  const dst = join(STANDALONE_ROOT, pkgName);
+  recursiveCopy(dst, src);
+  placedAtTopLevel.add(pkgName);
+  return true;
+}
+
+/**
+ * Given the real path of a package inside `.pnpm/<pkg>@<ver>/node_modules/<pkg>`,
+ * enumerate its siblings in the same `.pnpm` node_modules dir and copy each one
+ * to the standalone top-level. This is how pnpm lays out runtime deps: they
+ * live as flat siblings next to the main package in the same .pnpm bucket.
+ * Without this, `sharp` can't find `detect-libc`, etc.
+ */
+function copySiblingDeps(realPkgDir, pkgName) {
+  // realPkgDir = .../node_modules/.pnpm/<entry>/node_modules/<pkgName>
+  // Walk up to get the store node_modules dir
+  let storeNm;
+  if (pkgName.startsWith("@")) {
+    // scoped: .../<pkgName is scope/name> → parent is the scope dir, parent of parent is store nm
+    storeNm = dirname(dirname(realPkgDir));
+  } else {
+    storeNm = dirname(realPkgDir);
+  }
+  if (!existsSync(storeNm)) return 0;
+  let copied = 0;
+  for (const entry of readdirSync(storeNm, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
+    const entryPath = join(storeNm, entry.name);
+    if (entry.name.startsWith("@")) {
+      // scoped scope dir: enumerate sub-packages
+      try {
+        for (const sub of readdirSync(entryPath, { withFileTypes: true })) {
+          if (!sub.isDirectory() && !sub.isSymbolicLink()) continue;
+          const fullName = `${entry.name}/${sub.name}`;
+          if (fullName === pkgName) continue;
+          if (copyToTopLevel(fullName, join(entryPath, sub.name))) copied++;
+        }
+      } catch { /* ignore */ }
+    } else {
+      if (entry.name === pkgName) continue;
+      if (!entry.isDirectory() && !entry.isSymbolicLink()) continue;
+      if (copyToTopLevel(entry.name, entryPath)) copied++;
+    }
+  }
+  return copied;
+}
+
 for (const pkg of TOP_LEVEL_PACKAGES) {
   const root = packageRoot(pkg);
   if (!root) continue;
-  const linkPath = join(STANDALONE_ROOT, pkg);
-  recursiveCopy(linkPath, root);
+  copyToTopLevel(pkg, root);
   console.log(`✓ node_modules/${pkg} → ${root}`);
+  // Also copy the package's pnpm sibling deps (detect-libc next to sharp, etc)
+  const siblings = copySiblingDeps(root, pkg);
+  if (siblings > 0) {
+    console.log(`  └─ +${siblings} sibling dep(s) from .pnpm store`);
+  }
 }
+
+// Additional pass: for known-problematic native sub-packages (sharp's platform
+// libvips packages, onnxruntime web/node variants) also harvest their .pnpm
+// store siblings. sharp-libvips.js does `require('detect-libc')` from inside
+// @img/sharp-libvips-darwin-arm64 — that require resolves against
+// @img+sharp-libvips-darwin-arm64@<ver>/node_modules/, which has its own
+// sibling deps we must surface at the top level.
+const EXTRA_STORE_PREFIXES = [
+  "@img+sharp-",
+  "@img+sharp-libvips-",
+  "onnxruntime-web@",
+];
+if (existsSync(REAL_STORE)) {
+  for (const entry of readdirSync(REAL_STORE)) {
+    if (!EXTRA_STORE_PREFIXES.some((p) => entry.startsWith(p))) continue;
+    const storeNm = join(REAL_STORE, entry, "node_modules");
+    if (!existsSync(storeNm)) continue;
+    for (const dep of readdirSync(storeNm, { withFileTypes: true })) {
+      if (dep.name.startsWith(".")) continue;
+      if (dep.name.startsWith("@")) {
+        try {
+          for (const sub of readdirSync(join(storeNm, dep.name), { withFileTypes: true })) {
+            if (!sub.isDirectory() && !sub.isSymbolicLink()) continue;
+            copyToTopLevel(`${dep.name}/${sub.name}`, join(storeNm, dep.name, sub.name));
+          }
+        } catch { /* ignore */ }
+      } else if (dep.isDirectory() || dep.isSymbolicLink()) {
+        copyToTopLevel(dep.name, join(storeNm, dep.name));
+      }
+    }
+  }
+}
+console.log(`✓ total packages at top-level: ${placedAtTopLevel.size}`);
 
 // === Step 3: ensure node-pty spawn-helper is executable ===
 // pnpm strips the +x bit during extraction, which causes posix_spawnp to fail
