@@ -1,8 +1,10 @@
 # NestBrain
 
-**Your AI-powered second brain — now as a native Mac/Windows app.** Raw sources go in, a structured Markdown wiki comes out — compiled, linked, and maintained entirely by AI, inside a workspace with an integrated editor, terminal, and session-aware AI assistant.
+**Your AI-powered second brain, packaged as a native workspace for people who actually build things.** Raw sources go in, a structured Markdown wiki comes out — compiled, linked, and maintained entirely by AI. Inside a full integrated workspace with a VS Code-style editor, a real terminal, and deep **Claude Code** integration that finally makes your LLM remember what you were doing yesterday.
 
-![NestBrain](https://img.shields.io/badge/status-v0.10.0-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue) ![License](https://img.shields.io/badge/license-GPL--3.0-blue) ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)
+![NestBrain](https://img.shields.io/badge/status-v0.11.0-brightgreen) ![TypeScript](https://img.shields.io/badge/TypeScript-100%25-blue) ![License](https://img.shields.io/badge/license-GPL--3.0-blue) ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey)
+
+🌐 **Website**: [nestbrain.app](https://nestbrain.app)
 
 ---
 
@@ -10,156 +12,81 @@
 
 NestBrain is **free and open source** under GPL-3.0. You can clone this repo and build the app from source yourself, at no cost, forever.
 
-If you want **zero-hassle installation**, lifetime updates, and to support independent development, the **official signed and notarized binaries** are available as a one-time paid license:
+If you just want to **download, install, and start using it**, the **official signed binaries** are available as a one-time $29 license at **[nestbrain.app](https://nestbrain.app)** — the same app, pre-built and notarized, zero setup, directly funding continued development.
 
-| | Free (from source) | Supporter License |
+| | Free — Build from source | **⭐ Supporter License — $29** |
 |---|---|---|
-| **Price** | €0 | *Coming soon* |
-| **Source code** | ✅ Full GPL-3.0 source | ✅ Same source |
+| **Price** | $0 | **$29 one-time. Forever.** |
+| **Where** | This GitHub repo | [nestbrain.app](https://nestbrain.app) |
+| **Source code** | ✅ Full GPL-3.0 source | ✅ Same GPL-3.0 source |
 | **Features** | ✅ Everything below | ✅ Everything below |
-| **Build yourself** | Required | Optional |
-| **Signed & notarized builds** | ❌ Build yourself | ✅ macOS DMG + Windows NSIS |
-| **Lifetime updates** | Rebuild on new commits | ✅ Automatic download |
-| **Support** | Community (GitHub issues) | ✅ Email |
+| **Install time** | ~5 minutes (Node 20 + pnpm required) | **30 seconds — just open the DMG** |
+| **Signed & notarized** | ❌ You have to strip quarantine manually | ✅ **Apple Developer ID signed + notarized** — opens cleanly on first launch |
+| **Windows installer** | Build it yourself | ✅ **NSIS installer ready to run** |
+| **Updates** | `git pull && pnpm desktop:build` | ✅ **Direct download from your account, forever** |
+| **Support** | Community (GitHub issues) | ✅ Priority email support |
 
-Both paths get you the **same product**. The paid license buys convenience and directly funds continued development.
-
-> The Supporter License storefront is coming online soon. Until then, [build from source](#build-from-source) — it takes 2 commands.
+Both paths get you the **exact same product**. If you're comfortable running `pnpm install && pnpm desktop:package:mac`, you can have it for free in ~5 minutes. If you'd rather spend that time actually using the thing — and want to support an indie developer shipping quality software — buy the license at **[nestbrain.app](https://nestbrain.app)**. It's the same $29 you'd spend on two coffees, and it pays for weeks of continued work.
 
 ---
 
 ## What NestBrain does
 
-NestBrain ingests raw documents — web pages, PDFs, GitHub repos, arXiv papers, YouTube transcripts, RSS feeds — and uses an LLM to compile them into an interconnected wiki of Markdown files. Everything lives inside a **NestBrain workspace** on your disk: browsable through a dark-mode native UI, compatible with Obsidian, queryable in natural language, and fully self-hostable.
+NestBrain ingests raw documents — web pages, PDFs, GitHub repos, arXiv papers, YouTube transcripts, RSS feeds — and uses an LLM to compile them into an **interconnected wiki of Markdown files**. Everything lives inside a **NestBrain workspace** on your disk: browsable through a dark-mode native UI, compatible with Obsidian, queryable in natural language, and fully self-hostable.
 
-On top of the knowledge base, NestBrain is also an **integrated workspace**: a VS Code-style file tree, a built-in code editor, a real PTY terminal, and a skill system that lets Claude Code track your work sessions across projects.
+But NestBrain is more than just a knowledge base. It's a **full integrated workspace** for knowledge workers and developers: a VS Code-style file tree, a built-in code editor, a real PTY terminal, and a session-aware AI assistant powered by **Claude Code** that actually remembers what you were doing across sessions, projects, and machines.
 
-**You feed sources. The LLM builds the knowledge base. You explore, edit, and work alongside it.**
-
----
-
-## Key Features
-
-### Native desktop app
-- **Cross-platform** — Packaged as a native macOS (DMG, signed & notarized with Apple Developer ID) and Windows (NSIS installer) app via Electron wrapping a Next.js standalone server
-- **NestBrain workspace** — On first run, the app creates a `NestBrain/` folder scaffolded with `Business/`, `Context/`, `Daily/`, `Library/`, `Projects/`, `Skills/`, `Team/`. The compiled wiki lives in `Library/Knowledge/` (Obsidian-compatible)
-- **Guided onboarding** — 6-step first-run flow: welcome → explanation → directory picker → LLM provider → interactive first ingest → compile → celebration
-- **Movable workspace** — Settings page lets you relocate NestBrain to a different disk location; existing data is moved safely, cross-device fallback included
-
-### VS Code-style workspace
-- **File tree sidebar** — Foldable explorer rooted at NestBrain, **auto-refresh** via native FSEvents/ReadDirectoryChangesW watcher (debounced 500 ms) so Finder and terminal changes appear instantly
-- **Right-click context menu** — **Open**, **Rename** (inline editing in the tree), **Delete** (with confirmation and protection for workspace-critical dirs like `.nestbrain/`, `Daily/`, `Library/`)
-- **New File / New Folder** — Inline input rooted at the currently-selected directory, with automatic editor open for new files
-- **In-app editor** — CodeMirror 6-based editor opens on double-click, with syntax highlighting for **~100 languages** (lazy-loaded via `@codemirror/language-data`), **Cmd/Ctrl+S** to save, dirty indicator, and a **triple-layer unsaved-changes guard** (tab close button, window close, client-side nav)
-- **Integrated terminal** — Real PTY (xterm.js + node-pty), multi-session tabs, resizable bottom panel, always-available status-bar toggle, full shell per project
-- **New Project button** — Creates `NestBrain/Projects/<name>` and immediately opens a terminal session cwd'd into it
-
-### Session-aware AI assistant
-NestBrain ships with a **Skills system** that lets Claude Code track your work across sessions. When you create a new workspace, the app copies a `CLAUDE.md` and two skills into `NestBrain/Skills/`:
-
-- **`start_session`** — Say *"Buongiorno, Claude"* or *"Good morning, Claude"* to begin a session. Claude recaps the previous session (*"Yesterday you worked on..."* / *"In your previous session today..."*) and starts logging macro-tasks to a timestamped file in `Daily/`
-- **`end_session`** — Say *"Arrivederci, Claude"* or *"Goodbye, Claude"* to close the session. Claude writes a **Summary**, a **Next** section (unfinished work, next steps per project), a compact **Git snapshot** (branch, hash, dirty count), and updates **`Projects/<name>/.nest/STATE.md`** for every project touched
-- **Per-project STATE.md** — A tiny file containing Purpose, Current status, Next up, Last touched — the context handoff file between Claude Code sessions. Launch `claude` from inside a project and it picks up exactly where you left off
-- **Orphan session detection** — If you quit Claude Code without saying goodbye, the next session detects the open log file and resumes it instead of starting fresh
-
-### Knowledge base engine
-- **Ingest** — URLs, PDFs, GitHub repos, arXiv papers, YouTube transcripts, RSS feeds. **Duplicate detection** with confirmation dialog before overwriting
-- **Compile** — Incremental LLM compilation: only new/changed sources are processed. ~3–5 LLM calls per source regardless of total wiki size. **Auto-compile** toggle runs compilation after every ingest
-- **Browse** — Wikipedia-style wiki view with navigable `[[wikilinks]]`, backlinks panel, tags, breadcrumbs, translation to 12 languages
-- **Mind Map** — Interactive radial visualization of concept connections. Zoom, pan, click to navigate
-- **Ask** — Natural-language Q&A grounded in the wiki. Responses in the user's language with filtered citations
-- **Search** — Hybrid search combining local semantic embeddings (all-MiniLM-L6-v2) and weighted keyword search, normalized to [0,1] so semantic dominates
-- **Health Check** — LLM-powered wiki audit: orphan/broken-link/stub detection, gap analysis, inconsistency flagging
-- **Obsidian compatibility** — `Library/Knowledge/` is a valid Obsidian vault; open it in Obsidian and work on the same data concurrently
-- **CLI** — Full command-line interface alongside the desktop app: `ingest`, `compile`, `ask`, `search`, `lint`, `serve`
+**You feed sources. The LLM builds and maintains the knowledge base. You explore, edit, code, and work alongside it — all in one window.**
 
 ---
 
-## Tech Stack
+## Why you'll love it
 
-| Layer | Technology |
-|-------|-----------|
-| Desktop shell | Electron 33 + electron-builder + @electron/notarize |
-| Language | TypeScript (monorepo) |
-| Frontend | Next.js 16 (App Router, standalone build) |
-| Styling | Tailwind CSS |
-| Editor | CodeMirror 6 + `@codemirror/language-data` (~100 languages) |
-| Terminal | xterm.js + node-pty |
-| Embeddings | Local model via `@huggingface/transformers` + `onnxruntime-node` (all-MiniLM-L6-v2) |
-| LLM | Claude CLI (Max subscription) or OpenAI API |
-| Diagrams | Mermaid (rendered inline in articles) |
-| File watching | Native `fs.watch` (FSEvents on macOS, ReadDirectoryChangesW on Windows) |
-| Monorepo | Turborepo + pnpm workspaces |
-| CI/CD | GitHub Actions: Mac arm64 + Win x64 builds, Apple notarization, private release publishing |
+### 🧠 An AI that builds your wiki while you sleep
+Drop any source — a URL, a PDF, a GitHub repo, an arXiv paper, a YouTube video, an RSS feed — and NestBrain compiles it into a beautifully linked wiki. Concepts connect automatically. Gaps surface. Every article has backlinks, citations, and a clean Markdown body you can open in Obsidian too.
 
----
+### 💻 A real workspace, not just a viewer
+- **VS Code-style file tree** with right-click rename/delete/new-file, auto-refreshed via native filesystem watchers (no manual refresh)
+- **Built-in code editor** (CodeMirror 6) with syntax highlighting for ~100 languages, `Cmd/Ctrl+S` to save, dirty indicators, and unsaved-changes protection on tab close
+- **Integrated terminal** — real PTY (xterm.js + node-pty), multi-session tabs, resizable bottom panel — a proper shell per project, right inside the app
+- **New Project** creates `NestBrain/Projects/<name>` and opens a terminal session cwd'd into it, ready for `claude` or whatever your toolchain is
 
-## Build from Source
+### 🤝 The first app that actually remembers your work
+This is where NestBrain becomes something different. Every workspace ships with a **`CLAUDE.md`** and a **`Skills/`** directory copied automatically on first run, turning Claude Code into a session-aware coding partner that carries context across sessions, projects, and even machines.
 
-### Prerequisites
-- Node.js 20+
-- pnpm (`npm install -g pnpm`)
-- Claude CLI authenticated (`claude auth login`) **or** an OpenAI API key
+Two skills drive this:
 
-### Run the native desktop app (development)
-```bash
-git clone git@github.com:mikegazzaruso/nestbrain.git
-cd nestbrain
-pnpm install
-pnpm desktop:build
-pnpm --filter @nestbrain/desktop start
-```
+#### `start_session` — *"Buongiorno, Claude"* / *"Good morning, Claude"*
+Launch `claude` in any project directory, then say either trigger phrase. The skill will:
 
-On first launch the onboarding flow walks you through creating your NestBrain workspace and choosing an LLM provider.
+1. **Recap your previous session** — *"Yesterday you worked on…"* or *"In your previous session today you…"* — read directly from yesterday's session file plus the project's `.nest/STATE.md`
+2. **Detect orphan sessions** — if you quit Claude Code without saying goodbye last time, the next session picks up the open log file and resumes it instead of starting fresh
+3. **Start a new timestamped session log** in `NestBrain/Daily/YYYY-MM-DD_HH-MM-SS.md` and begin quietly recording macro-tasks as you work
 
-### Package a distributable binary
-```bash
-pnpm desktop:package:mac    # → apps/desktop/release/*.dmg (signed if you have a Developer ID cert)
-pnpm desktop:package:win    # → apps/desktop/release/*.exe (NSIS installer)
-```
+No more explaining your project to Claude from scratch. No more pasting context. You just say "good morning" and pick up exactly where you left off.
 
-Local builds use your own keychain / cert if present; otherwise they produce an unsigned binary (which macOS Gatekeeper will flag as "damaged" — run `xattr -cr /path/to/NestBrain.app` to strip the quarantine xattr).
+#### `end_session` — *"Arrivederci, Claude"* / *"Goodbye, Claude"*
+When you're done for the day — or just done with this work block — say the trigger phrase. The skill will:
 
----
+1. **Write a Summary** of what was done during the session
+2. **Write a Next section** listing unfinished work and next steps, per-project
+3. **Capture a compact Git snapshot** (branch, short hash, dirty file count) for every project touched
+4. **Update `Projects/<name>/.nest/STATE.md`** for every project — this is the **context handoff file**: Purpose, Current status, Next up, Last touched
 
-## Project Structure
+`.nest/STATE.md` is the magic. Next time you `cd` into that project on any machine (after a `git pull`) and say *"Buongiorno, Claude"* again, the skill reads the STATE file FIRST and immediately knows where to resume. Switch laptops, come back from vacation, hand work off to yourself a month later — the context is right there, written by the LLM for the LLM, in the project's git history.
 
-```
-nestbrain/
-├── apps/
-│   ├── desktop/            # Electron main process, preload, icons, packaging
-│   │   ├── src/main.ts     # PTY mgr, IPC, Next.js standalone wrapper, PATH fix, file watcher
-│   │   ├── src/preload.ts  # contextBridge API exposed to the renderer
-│   │   └── build/          # Icon pipeline, copy-assets, prepare-standalone, after-pack
-│   └── web/                # Next.js application (frontend + API)
-│       ├── src/app/        # Pages: wiki, mindmap, search, ask, ingest, health, settings, editor
-│       ├── src/components/ # Sidebar, file tree (+context menu), editor, terminal, onboarding
-│       └── src/lib/        # Contexts, native loader, settings
-├── packages/
-│   ├── core/               # Business logic
-│   │   ├── ingest/         # URL, PDF, markdown, GitHub, arXiv, YouTube, RSS
-│   │   ├── compiler/       # Wiki compilation with incremental tracking
-│   │   ├── qa/             # Q&A with hybrid search + citation filtering
-│   │   ├── search/         # Semantic + keyword hybrid search (normalized)
-│   │   ├── lint/           # Wiki health checks
-│   │   ├── llm/            # Provider abstraction (Claude CLI, OpenAI)
-│   │   └── vectorstore/    # Local embeddings + cosine similarity search
-│   ├── shared/             # Shared types and constants
-│   ├── db/                 # Vector DB layer
-│   └── cli/                # CLI entry point
-├── skeleton/               # Template copied into new NestBrain workspaces on setup
-│   ├── CLAUDE.md           # Workspace orientation for Claude Code
-│   └── Skills/
-│       ├── start_session/SKILL.md
-│       └── end_session/SKILL.md
-├── .github/workflows/      # CI/CD (release.yml: Mac + Win builds, notarization, release publish)
-└── NestBrain/              # User workspace (created during onboarding, NOT committed)
-    ├── Business/ Context/ Daily/ Library/ Projects/ Skills/ Team/
-    ├── CLAUDE.md           # Copied from skeleton/
-    ├── Skills/             # Copied from skeleton/
-    ├── Library/Knowledge/  # Compiled wiki (Obsidian-compatible)
-    └── .nestbrain/         # Internal state (raw sources, settings, vector index)
-```
+**This is what makes NestBrain worth paying for.** You're not buying a knowledge base app. You're buying a workspace where your AI assistant finally has continuity.
+
+### 📚 A proper knowledge base engine
+- **Hybrid search** — semantic (local embeddings via all-MiniLM-L6-v2) + keyword, normalized and weighted
+- **Q&A with citations** — natural-language questions grounded in your wiki, answers in your language, citations filtered to only what was actually referenced
+- **Mind Map** — interactive radial graph of concept connections
+- **Health Check** — LLM-powered wiki audit: orphans, broken links, stubs, gaps, inconsistencies
+- **Incremental compilation** — only new/changed sources are processed, ~3–5 LLM calls per source regardless of total wiki size
+- **Obsidian compatible** — `Library/Knowledge/` is a valid Obsidian vault; open it from Obsidian and work on the same data
+
+### 🔒 Local-first, no cloud lock-in
+All your data lives in `NestBrain/` on your disk. No account required to use the app. No telemetry. No vendor lock-in. You can quit NestBrain tomorrow and your knowledge base is still right there, in Markdown, usable by any other tool that understands `.md` files.
 
 ---
 
@@ -191,74 +118,83 @@ YouTube / RSS / .md                        │
                        └────────────┘
 ```
 
-### Ingest
-URLs are fetched and converted to Markdown (Readability + Turndown). PDFs are text-extracted via pdfjs-dist. GitHub repos pull README + key files + file tree. arXiv papers download and extract the full PDF. YouTube fetches transcripts. RSS feeds ingest multiple entries. Everything lands in `NestBrain/.nestbrain/raw/`. Duplicates are detected and require confirmation.
-
-### Compile
-The LLM processes **only new/changed sources** (incremental). For each new source:
-1. Generates a summary article
-2. Extracts concepts from **only the new summary**
-3. Writes articles for **new concepts only**, passing existing concept names for cross-linking
-4. Embeds each article into the local vector index
-5. Regenerates the master index and concept map
-
-Cost: ~3–5 LLM calls per new source, regardless of total wiki size. With auto-compile enabled this runs automatically after every ingest.
-
-### Search
-Hybrid approach running in parallel, with scores **normalized to [0,1]** before being combined:
-- **Semantic search** (weight 0.7) — query embedded via all-MiniLM-L6-v2, cosine similarity against the vector index
-- **Keyword search** (weight 0.3) — weighted scoring (title 5x, filename 3x, content 1x) with stop-word filtering (EN + IT)
-
-### Q&A
-1. Hybrid search finds top relevant articles
-2. Article bodies passed to LLM as context
-3. LLM answers **in the user's language**
-4. Citations filtered to only those actually referenced in the answer
-5. Answer auto-saved to `Library/Knowledge/outputs/`
-
-### Integrated terminal
-The Electron main process runs real PTY sessions via node-pty. Each session is tied to a `BrowserWindow` and streamed over IPC to an xterm.js frontend. Tabs, resize, keep-alive on hide, and a status-bar toggle are all first-class.
-
-### Health Check
-Automated wiki auditing: orphan detection, broken link detection, stub/empty article detection, gap analysis, LLM-powered inconsistency detection, health score dashboard.
+1. **Ingest** — URLs are fetched and converted to clean Markdown, PDFs are text-extracted, GitHub repos pull README + key files + tree, arXiv papers download full text, YouTube fetches transcripts, RSS feeds ingest multiple entries. Duplicates are detected and require confirmation.
+2. **Compile** — The LLM processes only new/changed sources. For each, it generates a summary, extracts concepts, writes articles for new concepts (cross-linking to existing ones), embeds into the vector index, and regenerates master index and concept map.
+3. **Ask & Explore** — Ask questions in natural language. Hybrid search finds relevant articles, the LLM answers with citations, the answer is auto-saved back to the wiki.
 
 ---
 
-## Supported Ingest Sources
+## Build from Source
 
-| Source | Example | What's Extracted |
-|--------|---------|-----------------|
-| Web URL | `https://example.com/article` | Clean article text + images |
-| PDF | Upload `.pdf` file | Full text extraction |
-| Markdown | Upload `.md` file | Direct copy with frontmatter |
-| GitHub | `https://github.com/user/repo` | README, key files, file tree, metadata |
-| arXiv | `https://arxiv.org/abs/2301.00001` | Abstract, full paper text, metadata |
-| YouTube | `https://youtube.com/watch?v=...` | Auto-generated transcript |
-| RSS | `https://example.com/feed.xml` | Latest entries as individual sources |
+The free path. Takes ~5 minutes if you have Node and pnpm installed.
+
+### Prerequisites
+- **Node.js 20+**
+- **pnpm** (`npm install -g pnpm`)
+- **Claude CLI** authenticated (`claude auth login`) **or** an OpenAI API key
+
+### Run the native app in development mode
+```bash
+git clone git@github.com:mikegazzaruso/nestbrain.git
+cd nestbrain
+pnpm install
+pnpm desktop:build
+pnpm --filter @nestbrain/desktop start
+```
+
+On first launch the onboarding flow walks you through creating your `NestBrain/` workspace and choosing an LLM provider.
+
+### Package a distributable binary yourself
+```bash
+pnpm desktop:package:mac    # → apps/desktop/release/*.dmg
+pnpm desktop:package:win    # → apps/desktop/release/*.exe (NSIS installer)
+```
+
+Local builds use your own Apple keychain / Developer ID cert if present; otherwise they produce an **unsigned** binary. On macOS this triggers Gatekeeper's "damaged" warning — you'll need to strip the quarantine attribute before the first launch:
+
+```bash
+xattr -cr /Applications/NestBrain.app
+```
+
+(The paid Supporter License binaries from [nestbrain.app](https://nestbrain.app) are signed and notarized, so you don't need to do any of this — they just work.)
 
 ---
 
 ## LLM Providers
 
-### Claude (default)
-Uses your Claude Max subscription via the CLI. No API costs, no bans — the native app spawns the CLI in the background.
+### Claude (default, recommended)
+Uses your Claude subscription via the Claude CLI. No API costs, no bans — the native app spawns the CLI in the background.
 
 ```bash
-claude auth login  # authenticate once
+claude auth login
 ```
 
-> NestBrain extends the packaged Electron app's `PATH` at startup so the `claude` CLI is found even when installed in `~/.npm-global/bin`, `/opt/homebrew/bin`, or other non-default locations.
+NestBrain extends the packaged app's `PATH` at startup so the `claude` CLI is found even when installed in `~/.npm-global/bin`, `/opt/homebrew/bin`, or other non-default locations.
 
 ### OpenAI
-Uses the OpenAI API. Configure in Settings.
+Uses the OpenAI API. Configure your key in Settings.
 
-Supports GPT-4o, GPT-4 Turbo, GPT-5, o1, o3, o4 series. The provider automatically handles `max_tokens` vs `max_completion_tokens` and `system` vs `developer` role differences.
+Supports GPT-4o, GPT-4 Turbo, GPT-5, o1, o3, and o4 series. The provider automatically handles the `max_tokens` vs `max_completion_tokens` and `system` vs `developer` role differences across models.
+
+---
+
+## Supported Ingest Sources
+
+| Source | Example | What's extracted |
+|--------|---------|-----------------|
+| Web URL | `https://example.com/article` | Clean article text + images |
+| PDF | Upload a `.pdf` file | Full text extraction |
+| Markdown | Upload a `.md` file | Direct copy with frontmatter |
+| GitHub | `https://github.com/user/repo` | README, key files, file tree, metadata |
+| arXiv | `https://arxiv.org/abs/2301.00001` | Abstract, full paper, metadata |
+| YouTube | `https://youtube.com/watch?v=…` | Auto-generated transcript |
+| RSS | `https://example.com/feed.xml` | Latest entries as individual sources |
 
 ---
 
 ## CLI
 
-All commands work alongside the desktop app:
+All the same commands work from the command line alongside the desktop app:
 
 ```bash
 nestbrain ingest <source>       # Ingest any supported source
@@ -266,80 +202,35 @@ nestbrain compile               # Compile wiki (incremental)
 nestbrain compile --force       # Recompile everything
 nestbrain ask "your question"   # Ask with citations
 nestbrain search "query"        # Hybrid search
-nestbrain lint                  # Run health check
-nestbrain serve                 # Start web UI
+nestbrain lint                  # Run the health check
+nestbrain serve                 # Start the web UI
 ```
 
 ---
 
-## Sessions & Skills
+## Obsidian Compatibility
 
-Every NestBrain workspace ships with a `CLAUDE.md` and a `Skills/` directory, auto-copied from [`skeleton/`](skeleton/) on first run.
+`NestBrain/Library/Knowledge/` is a fully compatible Obsidian vault out of the box:
 
-**Workflow**:
-```
-$ cd NestBrain/Projects/my-api
-$ claude                              # launches Claude Code
-> Buongiorno, Claude                  # triggers start_session skill
+- `[[wikilinks]]` work natively
+- YAML frontmatter on every article
+- Images with relative paths
+- Graph view reveals the concept connections
 
-  In your previous session today you:
-  - Wired FastAPI + Postgres
-  - Added /users routes
-  - Left /auth routes stubbed (JWT impl pending)
-
-  Session started. What shall we work on?
-
-> let's finish the auth routes
-  ... (work happens, Claude logs macro-tasks to Daily/2026-04-13_09-30-00.md)
-
-> Arrivederci, Claude                 # triggers end_session skill
-
-  Session closed. 1h 47m across 1 project.
-  - Summary, Next, and Git snapshot written to the session file
-  - Projects/my-api/.nest/STATE.md updated with current status + next up
-```
-
-The `.nest/STATE.md` file is the **context handoff**: future sessions (even on different machines after a git pull) read it first and immediately know where to resume.
+Open `NestBrain/Library/Knowledge/` as a vault in Obsidian and work on the same knowledge base from both NestBrain and Obsidian at the same time. The compiler watches for changes.
 
 ---
 
 ## Configuration
 
-Settings are managed through the **Settings** page in the app. They are persisted in `NestBrain/.nestbrain/settings.json`, including:
+Settings are managed through the **Settings** page in the app. They are persisted in `NestBrain/.nestbrain/settings.json` and include:
 
-- LLM provider (Claude CLI / OpenAI) + model
+- LLM provider (Claude CLI / OpenAI) and model
 - OpenAI API key
 - Auto-compile toggle
 - Onboarding completion flag
-- NestBrain workspace location (movable from Settings)
+- NestBrain workspace location (relocatable from Settings)
 - Danger-zone wipe
-
----
-
-## Obsidian Integration
-
-`NestBrain/Library/Knowledge/` is a fully compatible Obsidian vault:
-
-- `[[wikilinks]]` work natively
-- YAML frontmatter on every article
-- Images with relative paths
-- Graph view shows concept connections
-
-Open `NestBrain/Library/Knowledge/` as a vault in Obsidian — you can work on the same knowledge base from both NestBrain and Obsidian simultaneously.
-
----
-
-## Release & Distribution
-
-NestBrain uses a **free-source / paid-binary** distribution model (similar to Sublime Text, Obsidian Catalyst, Standard Notes). Here's how the pipeline works:
-
-- **Source code** — Fully public on [mikegazzaruso/nestbrain](https://github.com/mikegazzaruso/nestbrain) under GPL-3.0. Free to clone, build, and run forever.
-- **CI/CD** — Every push to `main` triggers [`.github/workflows/release.yml`](.github/workflows/release.yml) which builds Mac arm64 + Win x64 binaries in parallel on GitHub Actions runners.
-- **Code signing** — Mac builds are signed with an Apple **Developer ID Application** certificate (stored as an encrypted GitHub secret) and **notarized** via Apple's notary service using an app-specific password. Users get a Gatekeeper-clean install on first launch.
-- **Distribution** — Successful signed builds are published to a **private** GitHub repo `mikegazzaruso/nestbrain-releases`. Buyers of the Supporter License get read access to this repo via Polar.sh's GitHub Repository Access integration — they can pull new releases directly from GitHub with zero ceremony.
-- **Local workspaces** — User data lives entirely in `NestBrain/` on disk. No cloud lock-in, no account, no telemetry.
-
-This keeps the open source story clean (anyone can read and build the source) while letting supporters contribute financially in exchange for convenience.
 
 ---
 
@@ -351,3 +242,5 @@ Copyright © 2026 NextEpochs. All rights reserved.
 ## License
 
 This project is licensed under the [GNU General Public License v3.0](LICENSE).
+
+If NestBrain saves you time or makes your work better, consider supporting development by picking up a license at **[nestbrain.app](https://nestbrain.app)**. It's the difference between a cool side project and something I can keep building full time.

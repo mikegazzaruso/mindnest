@@ -274,7 +274,7 @@ for (const pkg of TOP_LEVEL_PACKAGES) {
 const EXTRA_STORE_PREFIXES = [
   "@img+sharp-",
   "@img+sharp-libvips-",
-  "onnxruntime-web@",
+  "@napi-rs+canvas-",  // platform-specific .node binary for pdf-parse's canvas polyfill
 ];
 if (existsSync(REAL_STORE)) {
   for (const entry of readdirSync(REAL_STORE)) {
@@ -359,6 +359,74 @@ if (danglingRemoved > 0) {
   console.log(`✗ removed ${danglingRemoved} dangling symlink(s) in .pnpm/node_modules/`);
 }
 
+// === Step 5: PRUNE bloat (platform-agnostic) ===
+// These paths are always safe to drop regardless of target platform:
+// we never use the browser/ESM/min/types variants of heavy packages at
+// runtime. Target-specific native prebuilds (onnxruntime-node/bin/napi-v6/<os>)
+// are pruned later by after-pack.cjs once we know whether we're packaging
+// for Mac or Windows.
+const PRUNE_PATHS = [
+  // onnxruntime-web: 133 MB of browser-targeted ONNX runtime we never touch.
+  // We use onnxruntime-node for all inference; transformers.node.cjs imports
+  // onnxruntime-node directly, not -web.
+  "onnxruntime-web",
+
+  // @huggingface/transformers: keep only transformers.node.cjs (main entry
+  // consumed by our native loader) and its siblings. Drop browser / ESM /
+  // minified variants and development assets.
+  "@huggingface/transformers/dist/transformers.web.js",
+  "@huggingface/transformers/dist/transformers.web.min.js",
+  "@huggingface/transformers/dist/transformers.js",
+  "@huggingface/transformers/dist/transformers.min.js",
+  "@huggingface/transformers/dist/transformers.node.mjs",
+  "@huggingface/transformers/dist/transformers.node.min.cjs",
+  "@huggingface/transformers/dist/transformers.node.min.mjs",
+  "@huggingface/transformers/dist/ort-wasm-simd-threaded.jsep.mjs",
+  "@huggingface/transformers/src",
+  "@huggingface/transformers/types",
+  "@huggingface/transformers/README.md",
+
+  // pdfjs-dist: pdf-parse uses `pdfjs-dist/legacy/build/pdf.mjs`, so the
+  // legacy/ tree must stay. Drop the modern build, the viewer UI, and types.
+  "pdfjs-dist/build",
+  "pdfjs-dist/web",
+  "pdfjs-dist/types",
+
+  // pdf-parse: main is `dist/pdf-parse/cjs/index.cjs`. We access pdf-parse
+  // via `require('pdf-parse')` from native-loader, so only cjs/ is needed.
+  // Drop the esm/ and web/ variants.
+  "pdf-parse/dist/pdf-parse/esm",
+  "pdf-parse/dist/pdf-parse/web",
+];
+
+let prunedBytes = 0;
+function dirSize(p) {
+  let total = 0;
+  try {
+    const stat = lstatSync(p);
+    if (stat.isFile() || stat.isSymbolicLink()) return stat.size || 0;
+    for (const entry of readdirSync(p, { withFileTypes: true })) {
+      total += dirSize(join(p, entry.name));
+    }
+  } catch { /* ignore */ }
+  return total;
+}
+
+for (const rel of PRUNE_PATHS) {
+  const target = join(STANDALONE_ROOT, rel);
+  if (!existsSync(target)) continue;
+  const size = dirSize(target);
+  try {
+    rmSync(target, { recursive: true, force: true });
+    prunedBytes += size;
+    console.log(`✂  pruned ${rel}  (${(size / 1024 / 1024).toFixed(1)} MB)`);
+  } catch (err) {
+    console.warn(`[warn] prune failed for ${rel}: ${err.message}`);
+  }
+}
+
 console.log(
-  `\nStandalone modules prepared: ${surgicalFiles} native files hydrated, ${danglingRemoved} dangling scrubbed, top-level entries in place.`,
+  `\nStandalone modules prepared: ${surgicalFiles} native files hydrated, ` +
+  `${danglingRemoved} dangling scrubbed, top-level entries in place. ` +
+  `Pruned ${(prunedBytes / 1024 / 1024).toFixed(0)} MB of unused variants.`,
 );

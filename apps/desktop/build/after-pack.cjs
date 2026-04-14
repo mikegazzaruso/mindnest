@@ -1,29 +1,124 @@
-// electron-builder afterPack hook: scrub macOS extended attributes on the
-// packaged .app bundle before code signing. On recent macOS (Sonoma+),
-// `xattr -cr` alone does NOT clear `com.apple.provenance`, which codesign
-// rejects with "resource fork, Finder information, or similar detritus not
-// allowed". Workaround: use `ditto --noextattr --noqtn` to make a clean
-// copy (ditto strips all xattrs and quarantine), then swap it in place.
+// electron-builder afterPack hook.
+// Two responsibilities:
+//   1) Prune platform-specific onnxruntime-node prebuilds we don't need
+//      (saves ~128 MB on Mac, ~92 MB on Windows).
+//   2) On macOS, scrub extended attributes with `ditto --noextattr --noqtn`
+//      so codesign doesn't reject the bundle with "resource fork, Finder
+//      information, or similar detritus not allowed".
 const { execSync } = require("node:child_process");
-const { rmSync, renameSync } = require("node:fs");
+const { rmSync, renameSync, existsSync, statSync, readdirSync } = require("node:fs");
+const { join } = require("node:path");
+
+// Measure a directory tree (bytes) for nice log output.
+function dirSize(p) {
+  let total = 0;
+  try {
+    const st = statSync(p);
+    if (st.isFile()) return st.size;
+    for (const e of readdirSync(p, { withFileTypes: true })) {
+      total += dirSize(join(p, e.name));
+    }
+  } catch {
+    /* ignore */
+  }
+  return total;
+}
+
+function rmIfExists(p, label) {
+  if (!existsSync(p)) return 0;
+  const size = dirSize(p);
+  try {
+    rmSync(p, { recursive: true, force: true });
+    console.log(`  • afterPack: pruned ${label} (${(size / 1024 / 1024).toFixed(1)} MB)`);
+    return size;
+  } catch (err) {
+    console.warn(`  • afterPack: prune ${label} failed: ${err.message}`);
+    return 0;
+  }
+}
+
+/**
+ * onnxruntime-node ships prebuilds for darwin/linux/win32 × arm64/x64.
+ * We only need the one matching the bundle we're packaging. Drop the rest.
+ */
+function pruneOnnxPrebuilds(platformName, resourcesWebDir) {
+  const napi = join(resourcesWebDir, "node_modules", "onnxruntime-node", "bin", "napi-v6");
+  if (!existsSync(napi)) return 0;
+
+  // Keep list: which "<os>/<arch>" to preserve based on target platform.
+  let keep;
+  if (platformName === "darwin") {
+    // Mac arm64 only (we build -mac with arch=arm64).
+    keep = new Set(["darwin/arm64"]);
+  } else if (platformName === "win32") {
+    // Win x64 only.
+    keep = new Set(["win32/x64"]);
+  } else if (platformName === "linux") {
+    keep = new Set(["linux/x64"]);
+  } else {
+    console.warn(`  • afterPack: unknown platform ${platformName}, skipping onnx prune`);
+    return 0;
+  }
+
+  let pruned = 0;
+  // napi/ has subdirs per OS (darwin, linux, win32), each with arch subdirs.
+  for (const os of readdirSync(napi, { withFileTypes: true })) {
+    if (!os.isDirectory()) continue;
+    const osDir = join(napi, os.name);
+    for (const arch of readdirSync(osDir, { withFileTypes: true })) {
+      if (!arch.isDirectory()) continue;
+      const key = `${os.name}/${arch.name}`;
+      if (keep.has(key)) continue;
+      pruned += rmIfExists(join(osDir, arch.name), `onnxruntime-node ${key}`);
+    }
+  }
+  return pruned;
+}
 
 exports.default = async function afterPack(context) {
-  if (process.platform !== "darwin") return;
-  const { appOutDir, packager } = context;
-  const appName = packager.appInfo.productFilename;
-  const appPath = `${appOutDir}/${appName}.app`;
-  const tmpPath = `${appOutDir}/.${appName}.sanitized.app`;
-  try {
-    execSync(`ditto --noextattr --noqtn "${appPath}" "${tmpPath}"`);
-    rmSync(appPath, { recursive: true, force: true });
-    renameSync(tmpPath, appPath);
-    console.log(`  • afterPack: sanitized ${appName}.app (ditto strip xattrs)`);
-  } catch (err) {
-    console.warn(`  • afterPack: sanitize failed: ${err.message}`);
+  const { appOutDir, electronPlatformName, packager } = context;
+
+  // Resolve the packaged web resources dir for the current platform.
+  // On darwin: <appOutDir>/<AppName>.app/Contents/Resources/web
+  // On win32/linux: <appOutDir>/resources/web
+  let resourcesWebDir;
+  if (electronPlatformName === "darwin" || electronPlatformName === "mas") {
+    const appName = packager.appInfo.productFilename;
+    resourcesWebDir = join(appOutDir, `${appName}.app`, "Contents", "Resources", "web");
+  } else {
+    resourcesWebDir = join(appOutDir, "resources", "web");
+  }
+
+  // 1) Prune onnxruntime-node prebuilds for other platforms.
+  if (existsSync(resourcesWebDir)) {
+    const prunedBytes = pruneOnnxPrebuilds(electronPlatformName, resourcesWebDir);
+    if (prunedBytes > 0) {
+      console.log(
+        `  • afterPack: freed ${(prunedBytes / 1024 / 1024).toFixed(0)} MB ` +
+          `of onnxruntime-node prebuilds for other platforms`,
+      );
+    }
+  } else {
+    console.warn(`  • afterPack: resources/web dir not found at ${resourcesWebDir}`);
+  }
+
+  // 2) macOS xattr sanitization (pre-existing behavior).
+  if (electronPlatformName === "darwin") {
+    const appName = packager.appInfo.productFilename;
+    const appPath = `${appOutDir}/${appName}.app`;
+    const tmpPath = `${appOutDir}/.${appName}.sanitized.app`;
     try {
-      rmSync(tmpPath, { recursive: true, force: true });
-    } catch {
-      /* ignore */
+      execSync(`ditto --noextattr --noqtn "${appPath}" "${tmpPath}"`);
+      rmSync(appPath, { recursive: true, force: true });
+      renameSync(tmpPath, appPath);
+      console.log(`  • afterPack: sanitized ${appName}.app (ditto strip xattrs)`);
+    } catch (err) {
+      console.warn(`  • afterPack: sanitize failed: ${err.message}`);
+      try {
+        rmSync(tmpPath, { recursive: true, force: true });
+      } catch {
+        /* ignore */
+      }
     }
   }
 };
