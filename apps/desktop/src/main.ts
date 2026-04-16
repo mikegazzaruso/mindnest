@@ -9,7 +9,7 @@ import {
   UtilityProcess,
 } from "electron";
 import { createServer } from "node:net";
-import { join, resolve } from "node:path";
+import { join, resolve, sep } from "node:path";
 import {
   existsSync,
   mkdirSync,
@@ -23,7 +23,17 @@ import {
   watch,
   type FSWatcher,
 } from "node:fs";
-import * as pty from "node-pty";
+// Lazy-load node-pty: if the native binding fails to load (wrong arch,
+// missing DLL, etc.) we still want the app to start — just without
+// terminal support. A top-level `import` would crash the entire process
+// before Electron even shows a window.
+let pty: typeof import("node-pty") | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  pty = require("node-pty") as typeof import("node-pty");
+} catch (err) {
+  console.error("[pty] native binding failed to load:", err);
+}
 import { execSync } from "node:child_process";
 
 // On macOS, packaged Electron apps don't inherit the user's shell PATH —
@@ -347,7 +357,8 @@ ipcMain.handle("nestbrain:selectDirectory", async () => {
 
 // === Terminal (PTY) session management ===
 interface PtySession {
-  proc: pty.IPty;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  proc: any;
   cwd: string;
 }
 const ptySessions = new Map<string, PtySession>();
@@ -401,8 +412,14 @@ ipcMain.handle(
     }
     const { shell: shellPath, args } = getShell();
     console.log(`[pty] spawning shell=${shellPath} args=${JSON.stringify(args)} cwd=${cwd}`);
+    if (!pty) {
+      throw new Error(
+        "Terminal is not available — the node-pty native module failed to load on this platform.",
+      );
+    }
     const id = `t${nextSessionId++}`;
-    let proc: pty.IPty;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let proc: any;
     try {
       proc = pty.spawn(shellPath, args, {
         name: "xterm-256color",
@@ -418,12 +435,12 @@ ipcMain.handle(
       );
     }
 
-    proc.onData((data) => {
+    proc.onData((data: string) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send(`nestbrain:terminal:data:${id}`, data);
       }
     });
-    proc.onExit(({ exitCode }) => {
+    proc.onExit(({ exitCode }: { exitCode: number }) => {
       if (mainWindow && !mainWindow.isDestroyed()) {
         mainWindow.webContents.send(`nestbrain:terminal:exit:${id}`, exitCode);
       }
@@ -538,8 +555,7 @@ function assertInsideNestBrain(targetPath: string): string {
   }
   const root = resolve(bootstrap.nestBrainPath);
   const abs = resolve(targetPath);
-  const rel = abs.startsWith(root + "/") || abs === root;
-  if (!rel) {
+  if (abs !== root && !abs.startsWith(root + sep)) {
     throw new Error(
       `Refusing to access path outside NestBrain: ${abs}`,
     );
@@ -588,7 +604,7 @@ ipcMain.handle(
     // should never hand-edit through the app's editor.
     const bootstrap = readBootstrap();
     const internal = resolve(bootstrap.nestBrainPath!, ".nestbrain");
-    if (abs === internal || abs.startsWith(internal + "/")) {
+    if (abs === internal || abs.startsWith(internal + sep)) {
       throw new Error("Cannot write into .nestbrain/ — internal state");
     }
     // Ensure parent directory exists
@@ -614,10 +630,9 @@ function isProtectedPath(abs: string): boolean {
   const root = resolve(bootstrap.nestBrainPath);
   if (abs === root) return true;
   const internal = resolve(root, ".nestbrain");
-  if (abs === internal || abs.startsWith(internal + "/")) return true;
-  // Top-level skeleton subdirs (Business, Context, Daily, ..., .nestbrain)
+  if (abs === internal || abs.startsWith(internal + sep)) return true;
   const rel = abs.slice(root.length + 1);
-  if (!rel.includes("/") && PROTECTED_TOP_LEVEL_NAMES.has(rel)) return true;
+  if (!rel.includes(sep) && PROTECTED_TOP_LEVEL_NAMES.has(rel)) return true;
   return false;
 }
 
@@ -971,6 +986,10 @@ app.whenReady().then(async () => {
     }
   } catch (err) {
     console.error("Failed to start:", err);
+    dialog.showErrorBox(
+      "NestBrain failed to start",
+      `${err instanceof Error ? err.message : String(err)}\n\nPlease report this at github.com/mikegazzaruso/nestbrain/issues`,
+    );
     app.quit();
   }
 

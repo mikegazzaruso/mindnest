@@ -185,7 +185,7 @@ function packageRoot(pkg) {
   try {
     const entry = require.resolve(pkg, { paths: searchPaths });
     let dir = dirname(entry);
-    while (dir !== "/" && dir.length > 1) {
+    while (dir !== dirname(dir)) {
       const pj = join(dir, "package.json");
       if (existsSync(pj)) {
         try {
